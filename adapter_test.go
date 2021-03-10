@@ -22,8 +22,6 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"

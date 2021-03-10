@@ -33,14 +33,13 @@ import (
 
 const (
 	defaultDatabaseName = "casbin"
-	defaultTableName    = "casbin_rule"
+	defaultTableName    = "sys_casbin_rule"
 )
 
 type customTableKey struct{}
 
 type CasbinRule struct {
-	ID    uint   `gorm:"primaryKey;autoIncrement"`
-	Ptype string `gorm:"size:100"`
+	PType string `gorm:"size:100"`
 	V0    string `gorm:"size:100"`
 	V1    string `gorm:"size:100"`
 	V2    string `gorm:"size:100"`
@@ -50,7 +49,7 @@ type CasbinRule struct {
 }
 
 func (CasbinRule) TableName() string {
-	return "casbin_rule"
+	return "sys_casbin_rule"
 }
 
 type Filter struct {
@@ -319,7 +318,7 @@ func (a *Adapter) createTable() error {
 	index := "idx_" + tableName
 	hasIndex := a.db.Migrator().HasIndex(t, index)
 	if !hasIndex {
-		if err := a.db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (ptype,v0,v1,v2,v3,v4,v5)", index, tableName)).Error; err != nil {
+		if err := a.db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (p_type,v0,v1,v2,v3,v4,v5)", index, tableName)).Error; err != nil {
 			return err
 		}
 	}
@@ -336,7 +335,7 @@ func (a *Adapter) dropTable() error {
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
-	var p = []string{line.Ptype,
+	var p = []string{line.PType,
 		line.V0, line.V1, line.V2, line.V3, line.V4, line.V5}
 
 	var lineText string
@@ -360,7 +359,7 @@ func loadPolicyLine(line CasbinRule, model model.Model) {
 // LoadPolicy loads policy from database.
 func (a *Adapter) LoadPolicy(model model.Model) error {
 	var lines []CasbinRule
-	if err := a.db.Order("ID").Find(&lines).Error; err != nil {
+	if err := a.db.Find(&lines).Error; err != nil {
 		return err
 	}
 
@@ -380,7 +379,7 @@ func (a *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) erro
 		return errors.New("invalid filter type")
 	}
 
-	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Order("ID").Find(&lines).Error; err != nil {
+	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Find(&lines).Error; err != nil {
 		return err
 	}
 
@@ -401,7 +400,7 @@ func (a *Adapter) IsFiltered() bool {
 func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		if len(filter.PType) > 0 {
-			db = db.Where("ptype in (?)", filter.PType)
+			db = db.Where("p_type in (?)", filter.PType)
 		}
 		if len(filter.V0) > 0 {
 			db = db.Where("v0 in (?)", filter.V0)
@@ -428,7 +427,7 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 	line := a.getTableInstance()
 
-	line.Ptype = ptype
+	line.PType = ptype
 	if len(rule) > 0 {
 		line.V0 = rule[0]
 	}
@@ -529,7 +528,7 @@ func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) err
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := a.getTableInstance()
 
-	line.Ptype = ptype
+	line.PType = ptype
 	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
 		line.V0 = fieldValues[0-fieldIndex]
 	}
@@ -553,9 +552,9 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 }
 
 func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
-	queryArgs := []interface{}{line.Ptype}
+	queryArgs := []interface{}{line.PType}
 
-	queryStr := "ptype = ?"
+	queryStr := "p_type = ?"
 	if line.V0 != "" {
 		queryStr += " and v0 = ?"
 		queryArgs = append(queryArgs, line.V0)
@@ -586,9 +585,9 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 }
 
 func appendWhere(line CasbinRule) (string, []interface{}) {
-	queryArgs := []interface{}{line.Ptype}
+	queryArgs := []interface{}{line.PType}
 
-	queryStr := "ptype = ?"
+	queryStr := "p_type = ?"
 	if line.V0 != "" {
 		queryStr += " and v0 = ?"
 		queryArgs = append(queryArgs, line.V0)
